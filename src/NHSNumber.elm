@@ -1,5 +1,4 @@
-module NHSNumber exposing (NHSNumber
-                          , show
+module NHSNumber exposing (show
                           , validateFromString
                           , validateFromList)
 
@@ -9,9 +8,11 @@ Validation follows the NHS data dictionary requirements:
 
 http://www.datadictionary.nhs.uk/data_dictionary/attributes/n/nhs/nhs_number_de.asp
 
-> The NHS NUMBER is 10 numeric digits in length. The tenth digit is a check digit used to confirm its validity. The check digit is validated using the Modulus 11 algorithm.
+> The NHS NUMBER is 10 numeric digits in length. The tenth digit is a check digit used to confirm its validity.
+ The check digit is validated using the Modulus 11 algorithm.
 
-# NHSNumber - List Int type alias
+# NHSNumber - Record with a number attribute in order to constrain invariants (e.g. a 9 digit long List Int would be
+ fundamentally invalid)
 
 @docs NHSNumber
 
@@ -29,10 +30,11 @@ import Char exposing (isDigit)
 import Array exposing (toList)
 
 
-{-| NHSNumber is a simple type alias of a (List Int)
+{-| NHSNumber is a record type with a number property, constraining the requirements of a 10 digit list of integers 0-9
+ by hiding the constructor
 
 -}
-type alias NHSNumber = List Int
+type alias NHSNumber = { number : (List Int) }
 
 
 requiredNHSNumberLength = 10
@@ -59,9 +61,9 @@ a valid NHSNumber representation is passed in
 
 -}
 show : NHSNumber -> String
-show nhsNumber =
+show { number } =
     let
-        numbers = Array.fromList nhsNumber
+        numbers = Array.fromList number
         sliceToString start end numbers =
             numbers
             |> Array.slice start end
@@ -80,9 +82,15 @@ show nhsNumber =
 -}
 validateFromString : String -> Result String NHSNumber
 validateFromString raw =
-    raw
-    |> stringToDigits
-    |> isValidNHSNumber
+    let
+        check raw =
+         raw
+         |> stringToDigits
+         |> isValidNHSNumber
+    in
+    case check raw of
+        Err e -> Err e
+        Ok number -> Ok (NHSNumber number)
 
 
 {-| Validate a list of digits as a potential NHS number.
@@ -92,11 +100,17 @@ validateFromString raw =
 -}
 validateFromList : List Int -> Result String NHSNumber
 validateFromList numbers =
-    numbers
-    |> isValidNHSNumber
+    let
+        check n =
+             n
+             |> isValidNHSNumber
+    in
+    case check numbers of
+        Err e -> Err e
+        Ok number -> Ok (NHSNumber number)
 
 
-calculateWeighting : NHSNumber -> List Int
+calculateWeighting : List Int -> List Int
 calculateWeighting number =
     let
         weightingFactors = [10,9,8,7,6,5,4,3,2]
@@ -104,8 +118,8 @@ calculateWeighting number =
         List.map2 (*) weightingFactors number
 
 
-checkDigitIsValid : NHSNumber -> Result String NHSNumber
-checkDigitIsValid nhsNumber =
+checkDigitIsValid : List Int -> Result String (List Int)
+checkDigitIsValid number =
     let
         getCheckDigit number =
             number
@@ -123,8 +137,8 @@ checkDigitIsValid nhsNumber =
             |> (-) 11
             |> convertEleven
     in
-        case (calculateCheckDigit nhsNumber) == (getCheckDigit nhsNumber) of
-            True -> Ok nhsNumber
+        case (calculateCheckDigit number) == (getCheckDigit number) of
+            True -> Ok number
             False -> Err "Invalid check digit"
 
 
@@ -135,7 +149,7 @@ isValidNHSNumberLength n =
         False -> Err ("Invalid NHS Number length, should be " ++ (toString requiredNHSNumberLength))
 
 
-isValidNHSNumber : List Int -> Result String NHSNumber
+isValidNHSNumber : List Int -> Result String (List Int)
 isValidNHSNumber nhsNumber =
     let
         filterToValidNumberSet n = List.filter (\x -> x >= 0 && x < 10) n

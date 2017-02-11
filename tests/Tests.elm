@@ -66,7 +66,12 @@ nhsNumberSuite =
             ]
         , describe "NHSNumber.show"
             [ test "correctly displays an NHS Number" <|
-                \() -> Expect.equal "123-456-7890" (NHSNumber.show [1,2,3,4,5,6,7,8,9,0])
+                \() -> (let n = case NHSNumber.validateFromString "495-579-0062" of
+                            Ok n -> (NHSNumber.show n)
+                            Err e -> e
+                        in
+                            Expect.equal "495-579-0062" n
+                )
             ]
         ]
 
